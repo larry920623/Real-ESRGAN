@@ -6,7 +6,9 @@ tb_logger/*
 wandb/*
 tmp/*
 weights/*
-
+inputs/*
+*.pth
+.vscode/
 version.py
 
 # Byte-compiled / optimized / DLL files
