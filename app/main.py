@@ -1,9 +1,8 @@
 import os
 import shutil
-import subprocess
 import uuid
 from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import FileResponse
 from app.worker import process_image_task
 from celery.result import AsyncResult
 from app.worker import celery_app
@@ -25,7 +24,7 @@ os.makedirs(RESULTS_DIR, exist_ok=True)
 
 @app.post("/upload")
 async def process_image(file: UploadFile = File(...)):
-# 1. 存檔 (跟之前一樣，但存到共享區)
+    # 1. 存檔 (跟之前一樣，但存到共享區)
     file_ext = os.path.splitext(file.filename)[1]
     safe_filename = f"{uuid.uuid4()}{file_ext}"
     input_path = os.path.join(INPUT_DIR, safe_filename)
@@ -38,7 +37,6 @@ async def process_image(file: UploadFile = File(...)):
     output_path = os.path.join(RESULTS_DIR, output_filename)
 
     # 2. 【關鍵改變】: 不直接跑，而是丟給 Celery (delay)
-    # 這裡會瞬間回傳一個 task，不會卡住
     task = process_image_task.delay(input_path, output_path, "400")
 
     # 3. 馬上回傳號碼牌 (Task ID)
@@ -53,10 +51,8 @@ async def get_task_status(task_id: str):
         return {"status": "pending", "message": "排隊中或正在處理..."}
     
     elif task_result.state == 'SUCCESS':
-        # 任務完成，回傳結果資訊
         result_data = task_result.result
         if result_data.get("status") == "completed":
-             # 這裡可以回傳圖片下載連結
              return {"status": "success", "download_url": f"/download/{os.path.basename(result_data['output_path'])}"}
         else:
              return {"status": "failed", "error": result_data.get("error")}
