@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # 1. Redis (訊息中心)
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  # 2. FastAPI (Web 介面)
+  web:
+    build: .
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - ./data_shared:/data  # 掛載共享資料夾 (本機:容器)
+    ports:
+      - "8002:8000"
+    depends_on:
+      - redis
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+  # 3. Celery Worker (後台苦工 - 需要 GPU)
+  worker:
+    build: .
+    # 啟動指令改為啟動 Celery
+    command: celery -A app.worker worker --loglevel=info
+    volumes:
+      - ./data_shared:/data  # 掛載同一個共享資料夾
+    depends_on:
+      - redis
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    # ⭐️ 這裡是最重要的：分配 GPU 給 Worker
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
