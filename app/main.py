@@ -14,10 +14,10 @@ os.makedirs(INPUT_DIR, exist_ok=True)
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 
-
 @app.get("/")
 def read_root():
     return {"message": "Real-ESRGAN API is running!"}
+
 
 @app.post("/upload")
 async def process_image(file: UploadFile = File(...)):
@@ -49,4 +49,3 @@ async def process_image(file: UploadFile = File(...)):
         return FileResponse(output_path)
     else:
         return {"error": "找不到輸出檔案", "path": output_path}
-    
